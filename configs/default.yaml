@@ -1,0 +1,62 @@
+# Default configuration. Variant-specific configs override fields under `model`,
+# `transforms`, and `graph`.
+
+seed: 42
+
+data:
+  netcdf_path: data/meteo_unified.nc
+  variables: [air_temperature_c, dew_point_temperature_c, wind_direction_deg, wind_speed_ms]
+  decompose_wind: true                       # (dir, speed) -> (u, v) before training
+  era5_region:                               # bounding box used to subselect ERA5 grid points
+    lat_min: -24.5
+    lat_max: -23.0
+    lon_min: -47.5
+    lon_max: -46.0
+  inmet_max_distance_km: 250.0               # keep INMET stations within this radius of iag_center
+  iag_center: [-23.6510, -46.6225]           # IAG-USP (approx); used for filtering and graph centering
+  splits:
+    train: ["2020-01-01", "2022-12-31"]
+    val:   ["2023-01-01", "2023-12-31"]
+    test:  ["2024-01-01", "2024-12-31"]
+
+windows:
+  context_hours: 48
+  forecast_hours: 24
+  observer_stride_hours: 6                   # spacing between observer times within a partition
+
+transforms:
+  use_revin: true
+  mcar_instance_drop_range: [0.0, 0.0]       # disabled by default; variants enable it
+  mcar_timestamp_drop_range: [0.0, 0.0]
+
+graph:
+  knn:
+    era5_to_inmet: 8
+    era5_to_iag: 16
+    inmet_to_iag: 4
+  num_layers: 2
+
+model:
+  variant: hgt                               # one of: gru, st_mcar, hgt
+  hidden_dim: 128
+  pe_time_dim: 32
+  pe_space_dim: 32
+  hgt:
+    num_heads: 4
+    dropout: 0.1
+
+target_types: [IAG, INMET]                   # ERA5 is context-only
+
+training:
+  batch_size: 4
+  epochs: 30
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+  grad_clip: 1.0
+  device: cuda                               # falls back to cpu if cuda is unavailable
+  num_workers: 2
+  log_every: 20
+  output_dir: runs
+
+eval:
+  metrics: [ioa, mae, rmse, corr]

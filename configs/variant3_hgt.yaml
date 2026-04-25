@@ -1,0 +1,8 @@
+defaults: default.yaml
+
+model:
+  variant: hgt
+
+transforms:
+  mcar_instance_drop_range: [0.0, 0.3]
+  mcar_timestamp_drop_range: [0.0, 0.3]

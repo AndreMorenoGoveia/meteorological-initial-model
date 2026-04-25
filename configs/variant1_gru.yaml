@@ -1,0 +1,8 @@
+defaults: default.yaml
+
+model:
+  variant: gru
+
+transforms:
+  mcar_instance_drop_range: [0.0, 0.0]
+  mcar_timestamp_drop_range: [0.0, 0.0]
