@@ -58,7 +58,7 @@ pip install -e .
 
 Treinamento:
 ```bash
-python scripts/train.py --config configs/variant3_hgt.yaml
+python3 scripts/train.py --config configs/variant3_hgt.yaml
 ```
 
 Avaliação em conjunto held-out:

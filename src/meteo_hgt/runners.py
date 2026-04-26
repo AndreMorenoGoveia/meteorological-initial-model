@@ -80,7 +80,17 @@ def _resolve_device(name: str) -> torch.device:
     if name == "cuda" and not torch.cuda.is_available():
         log.warning("CUDA requested but not available; falling back to CPU.")
         return torch.device("cpu")
-    return torch.device(name)
+    device = torch.device(name)
+    if device.type == "cuda":
+        idx = device.index if device.index is not None else 0
+        props = torch.cuda.get_device_properties(idx)
+        log.info(
+            "using device=cuda:%d  name=%s  mem=%.1f GB",
+            idx, props.name, props.total_memory / 1e9,
+        )
+    else:
+        log.info("using device=%s", device)
+    return device
 
 
 def _output_dir(cfg) -> Path:

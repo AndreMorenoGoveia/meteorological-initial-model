@@ -75,8 +75,16 @@ class HGTStack(nn.Module):
             edge_index_dict[(s.value, "to", d.value)] = ei_b
 
         for layer in self.layers:
-            x_dict = layer(x_dict, edge_index_dict)
-            x_dict = {k: self.dropout(torch.relu(v)) for k, v in x_dict.items()}
+            out_dict = layer(x_dict, edge_index_dict)
+            # HGTConv returns only destination-node features; preserve source-only
+            # types (e.g. ERA5) so they are still available to the next layer.
+            new_x: dict[str, torch.Tensor] = {}
+            for k in x_dict:
+                if k in out_dict:
+                    new_x[k] = self.dropout(torch.relu(out_dict[k]))
+                else:
+                    new_x[k] = x_dict[k]
+            x_dict = new_x
 
         return {
             InstanceType(k): v.reshape(B, sizes[InstanceType(k)], self.hidden_dim)
