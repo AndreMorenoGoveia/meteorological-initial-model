@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import torch
 from torch import nn
-from torch_geometric.data import HeteroData
 from torch_geometric.nn import HGTConv
 
 from ..data.unified import InstanceType
@@ -30,7 +29,6 @@ class HGTStack(nn.Module):
         self.relations = list(relations)
         self.hidden_dim = hidden_dim
 
-        # PyG HGT expects a metadata tuple of (node_types, edge_types).
         node_types = [t.value for t in self.types]
         edge_types = [(s.value, "to", d.value) for (s, d) in self.relations]
         self.metadata = (node_types, edge_types)
@@ -76,8 +74,6 @@ class HGTStack(nn.Module):
 
         for layer in self.layers:
             out_dict = layer(x_dict, edge_index_dict)
-            # HGTConv returns only destination-node features; preserve source-only
-            # types (e.g. ERA5) so they are still available to the next layer.
             new_x: dict[str, torch.Tensor] = {}
             for k in x_dict:
                 if k in out_dict:

@@ -71,6 +71,61 @@ Inspeção rápida do NetCDF:
 python scripts/inspect_data.py
 ```
 
+Visualização dos resultados de uma run:
+```bash
+python3 scripts/plot_results.py \
+  --config configs/variant3_hgt.yaml \
+  --checkpoint runs/hgt/best.pt \
+  --partition val
+# escreve 4 PNGs em runs/hgt/plots/
+```
+
+## O que cada métrica significa
+
+A loss usada no treino é `1 - IoA` (índice de concordância de Willmott). Para
+cada (instância, variável) ela compara a previsão `ŷ` com o observado `y` ao
+longo das 24 h do horizonte:
+
+```
+IoA = 1 - Σ (y - ŷ)²  /  Σ (|ŷ - ȳ| + |y - ȳ|)²
+```
+
+Como interpretar os números no log e nos gráficos:
+
+| Métrica | Unidade | Como ler |
+|---------|---------|----------|
+| **IoA**  | adimensional, [0, 1] | 1 = previsão perfeita; ~0.6+ já é "razoável" para um modelo aprendendo do zero. **A loss = 1 - IoA**, então loss caindo de 0.66 → 0.30 = IoA subindo de 0.34 → 0.70. |
+| **MAE**  | unidade da variável (°C, m/s) | Erro médio absoluto. Para `air_temperature_c`, MAE = 1.8 → o modelo erra ~1.8 °C em média. |
+| **RMSE** | unidade da variável | Penaliza erros grandes mais que o MAE; sempre ≥ MAE. |
+| **corr** | [-1, 1] | Correlação de Pearson. Diz se a forma da série está certa, ignorando viés/escala. Pode ser alta (0.95) com IoA baixo se houver viés. |
+
+**Diagnóstico rápido**: se `corr` é alta mas `IoA` é baixa, o modelo está
+acertando o padrão temporal mas com viés ou escala errada — geralmente
+problema de normalização ou de dados de treino mal balanceados. Se ambos são
+baixos, o sinal real ainda não está chegando aos pesos.
+
+## Para que serve este modelo inicial?
+
+Mais do que números absolutos, este projeto entrega um **pipeline e baseline de
+referência**:
+
+1. **Baseline contra GFS** (§10.2 do spec): permite medir se o HGT, treinado
+   apenas com 5 anos de dados locais, supera ou empata um forecast operacional
+   global em algumas variáveis na região da USP.
+2. **Demonstração de fusão multi-fonte**: mostra que dá pra integrar reanálise
+   em grade (ERA5) com observações irregulares (IAG, INMET) num modelo só, sem
+   precisar interpolar tudo numa grade comum.
+3. **Plataforma para iterar**: as três variantes (`gru` / `st_mcar` / `hgt`)
+   permitem isolar o ganho real do grafo heterogêneo vs codificação ST vs apenas
+   uma RNN. Os gráficos do `plot_results.py` deixam essa comparação visual.
+4. **Forecast curto-prazo de microclima**: depois de treinado em dados reais,
+   produz previsão horária para 24h à frente para a estação IAG e estações
+   INMET próximas, condicionada ao contexto regional do ERA5.
+
+A escala temporal pequena (2020-2024) e o número limitado de estações fazem
+desta uma versão "inicial" — análoga à do paper original, que usou 4 meses de
+drifters como prova de conceito antes de escalar.
+
 ## Notas de modelagem
 
 - Vento é decomposto em `(u, v)` no data layer (config `data.decompose_wind`),

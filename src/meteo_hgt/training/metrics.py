@@ -71,3 +71,47 @@ def compute_metrics(
             fn = _REGISTRY[name]
             out[t.value][name] = float(fn(y_pred, y_true, m).item())
     return out
+
+
+def metrics_per_variable(
+    y_pred: torch.Tensor,
+    y_true: torch.Tensor,
+    mask: torch.Tensor,
+    feature_names: list[str],
+    metrics: list[str],
+) -> dict[str, dict[str, float]]:
+    """Per-feature metrics. Returns ``{feature_name: {metric_name: scalar}}``."""
+    out: dict[str, dict[str, float]] = {}
+    for fi, name in enumerate(feature_names):
+        p = y_pred[..., fi : fi + 1]
+        t = y_true[..., fi : fi + 1]
+        m = mask[..., fi : fi + 1]
+        out[name] = {}
+        for mname in metrics:
+            fn = _REGISTRY[mname]
+            out[name][mname] = float(fn(p, t, m).item())
+    return out
+
+
+def per_leadtime_error(
+    y_pred: torch.Tensor,
+    y_true: torch.Tensor,
+    mask: torch.Tensor,
+    kind: str = "mae",
+) -> torch.Tensor:
+    """Returns shape (T_f, F) — error per forecast step and per variable.
+
+    ``y_pred`` etc. have shape (W, N, T_f, F). Reduction is over W and N (the
+    instances and the windows), keeping T_f and F.
+    """
+    if kind not in ("mae", "rmse"):
+        raise ValueError(kind)
+    m = mask.to(y_pred.dtype)
+    diff = (y_pred - y_true) * m
+    if kind == "mae":
+        num = diff.abs().sum(dim=(0, 1))           # (T_f, F)
+    else:
+        num = (diff ** 2).sum(dim=(0, 1))
+    denom = m.sum(dim=(0, 1)).clamp(min=1.0)
+    val = num / denom
+    return val.sqrt() if kind == "rmse" else val
