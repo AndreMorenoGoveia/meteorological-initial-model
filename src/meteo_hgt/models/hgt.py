@@ -48,11 +48,9 @@ class HGTStack(nn.Module):
 
     def forward(
         self,
-        h_by_type: dict[InstanceType, torch.Tensor],         # each (B, N_k, H)
+        h_by_type: dict[InstanceType, torch.Tensor],
         edges_by_relation: dict[tuple[InstanceType, InstanceType], torch.Tensor],
-        # each edge_index (2, E_k) in *per-type* node coords
     ) -> dict[InstanceType, torch.Tensor]:
-        # Flatten batch into node dim per type, and offset edges per batch element.
         sizes = {t: int(h.shape[1]) for t, h in h_by_type.items()}
         any_t = next(iter(h_by_type))
         B = h_by_type[any_t].shape[0]
@@ -65,7 +63,6 @@ class HGTStack(nn.Module):
                 edge_index_dict[(s.value, "to", d.value)] = torch.empty((2, 0), dtype=torch.long, device=ei.device)
                 continue
             S, D = sizes[s], sizes[d]
-            # Replicate the per-sample edges across the batch with per-batch offsets.
             off_src = (torch.arange(B, device=ei.device) * S).repeat_interleave(ei.shape[1])
             off_dst = (torch.arange(B, device=ei.device) * D).repeat_interleave(ei.shape[1])
             ei_b = ei.repeat(1, B)
