@@ -15,9 +15,9 @@ data:
   inmet_max_distance_km: 250.0               # keep INMET stations within this radius of iag_center
   iag_center: [-23.6510, -46.6225]           # IAG-USP (approx); used for filtering and graph centering
   splits:
-    train: ["2020-01-01", "2022-12-31"]
-    val:   ["2023-01-01", "2023-12-31"]
-    test:  ["2024-01-01", "2024-12-31"]
+    train: ["2020-01-01", "2023-12-31"]
+    val:   ["2024-01-01", "2024-06-30"]
+    test:  ["2024-07-01", "2024-12-31"]
 
 windows:
   context_hours: 48
@@ -37,7 +37,7 @@ graph:
   num_layers: 2
 
 model:
-  variant: hgt                               # one of: gru, st_mcar, hgt
+  variant: hgt                               # [gru, st_mcar, hgt]
   hidden_dim: 128
   pe_time_dim: 32
   pe_space_dim: 32

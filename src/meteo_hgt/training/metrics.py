@@ -115,3 +115,29 @@ def per_leadtime_error(
     denom = m.sum(dim=(0, 1)).clamp(min=1.0)
     val = num / denom
     return val.sqrt() if kind == "rmse" else val
+
+
+def per_leadtime_ioa(
+    y_pred: torch.Tensor,
+    y_true: torch.Tensor,
+    mask: torch.Tensor,
+    eps: float = 1e-8,
+) -> torch.Tensor:
+    """Returns shape (T_f, F) — Willmott IoA per forecast step and per variable.
+
+    Treats all (W × N) valid observations at each (t, f) as a single population,
+    so the reference mean ȳ is computed across windows and instances at that step.
+    Steps with no valid observations return NaN.
+    """
+    m = mask.to(y_pred.dtype)                                  # (W, N, T_f, F)
+    count = m.sum(dim=(0, 1), keepdim=True).clamp(min=1.0)    # (1, 1, T_f, F)
+    y_bar = (y_true * m).sum(dim=(0, 1), keepdim=True) / count
+
+    num = (((y_true - y_pred) ** 2) * m).sum(dim=(0, 1))      # (T_f, F)
+    denom = (
+        ((y_pred - y_bar).abs() + (y_true - y_bar).abs()) ** 2 * m
+    ).sum(dim=(0, 1))
+    ioa_val = 1.0 - num / (denom + eps)
+
+    has_obs = m.sum(dim=(0, 1)) > 0
+    return torch.where(has_obs, ioa_val, torch.full_like(ioa_val, float("nan")))
